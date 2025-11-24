@@ -1,3 +1,4 @@
+<!--version 1.0-->
 <!DOCTYPE HTML>
 <html lang="en">
   <head>
@@ -59,6 +60,9 @@
       }
       #vertical {border-left:var(--ch-border-style);height:100vh;width:0;}
       #horizontal {border-top:var(--ch-border-style);width:100vw;height:0;}
+      .stay {display:block;}
+      .v-stay {border-left:var(--ch-border-style);height:100vh;width:0;top:0;}
+      .h-stay {border-top:var(--ch-border-style);width:100vw;height:0;left:0;}
 
       .line {
         position:absolute;
@@ -67,6 +71,33 @@
       }
       .vert {border-left:var(--l-border-style);height:100vh;width:0;}
       .horiz {border-top:var(--l-border-style);width:100vw;height:0;}
+
+    .touch-target {
+        position:absolute;
+        width:25px;
+        height:25px;
+        transform:translate(-50%,-50%);
+        border-radius: 50%;
+        background-color: #fff3;
+        border: 2px solid #fff5;
+        opacity: 0%;
+        transition:opacity 100ms ease-in-out;
+        transition:background-color 100ms ease-in-out;
+    }
+    .touch-target:hover {
+        opacity: 100%;
+        background-color: #07f3;
+        cursor:pointer;
+    }
+
+      /*Modes*/
+      #modes {margin-top:0.5em;}
+      #x-hair {display:none;}
+      #modes label {display:inline-block;width:25px;height:25px;cursor:pointer;}
+      #modes label:hover {opacity:100%;}
+
+      #L-x-hair {background-image: url("/this/assets/crosshair_pointer.svg");opacity: 100%;}
+      #x-hair:checked + #L-x-hair {background-image: url("/this/assets/crosshair_plus.svg");opacity:100%;}
 
       @media (prefers-color-scheme: dark) {
         body {background-color:#222;}
@@ -96,7 +127,10 @@
           <option value="90"></option>
           <option value="100"></option>
         </datalist>
-      </form>
+
+      <div id="modes">
+          <input id="x-hair" type="checkbox"><label id="L-x-hair" for="x-hair" title="Crosshairs: &#10138; Follow | + Keep"></label>
+      </div>
     </div>
     <div id="grid"></div>
 
@@ -112,13 +146,25 @@
       const gridToggle =  document.getElementById('grid-toggle');
       const gridSpacingVal =  document.getElementById('grid-spacing');
       const crosshairs = [vertical, horizontal];
+
+      // MODE SELECTORS
+      let xHairMode; document.getElementById('x-hair').addEventListener('change', ()=>handleCrosshairs(false));
+
+      // VARIABLES
       let dimensions = [window.innerWidth, window.innerHeight];
       let x,y;
+      const keeps = [];
+      const removes = [];
 
       // CONFIG
       let enableGrid = true;
       let gridSpacing = 10;
+      const xHairHistoryLimit = 50;
 
+      // INITIALIZATION
+      handleCrosshairs(true);
+
+      // FUNCTIONS
       function setContent() {
        win.textContent = `[ ${window.innerWidth}px x ${window.innerHeight}px ]`;
        mouse.textContent = `(${x} x ${y})`;
@@ -155,14 +201,6 @@
        horizontal.style.top = e.clientY+"px";
        setContent();
      });
-     grid.addEventListener('click', (e) => {
-       // Toggle crosshairs
-       if (vertical.style.display === 'block') {
-         crosshairs.forEach(el=>el.style.display = 'none');
-       } else {
-         crosshairs.forEach(el=>el.style.display = 'block');
-       }
-     });
 
      function drawGrid(deltas) {
        const width = window.innerWidth;
@@ -194,7 +232,81 @@
            drawGrid(deltas);
          }
        });
-     }
+     };
+
+      // MODES
+      // - CROSSHAIRS
+      function handleCrosshairs(isInit) {
+        console.log(`handleCrosshairs(${isInit})`);
+        console.log(`xHairMode: ${xHairMode}`);
+        if (!isInit) xHairMode = !xHairMode;
+        if (!isInit && xHairMode) {
+        console.log(`handleCrosshairs(${isInit}); if condition`);
+          grid.removeEventListener('click', xHairFollowMode);
+          grid.addEventListener('mousedown', xHairMousedown);
+          grid.addEventListener('mouseup', xHairMouseup);
+        }
+        else {
+        console.log(`handleCrosshairs(${isInit}); else condition`);
+          grid.removeEventListener('mousedown', xHairMousedown);
+          grid.removeEventListener('mouseup', xHairMouseup);
+          grid.addEventListener('click', xHairFollowMode);
+        }
+      }
+
+      function xHairMousedown(e) {
+        console.log(`xHairMousedown(${e.target.id});`);
+        // grid.requestPointerLock();
+        crosshairs.forEach(el=>el.style.display = 'block');
+      }
+
+      function xHairMouseup(e) {
+        console.log(`xHairMouseup(${e.target.id});`);
+        // document.exitPointerLock();
+        crosshairs.forEach(el=>el.style.display = 'block');
+        const key = String(Math.random()).slice(-4);
+        const vLine = document.createElement('div');
+          vLine.classList.add('crosshairs', 'stay', 'v-stay');
+          vLine.setAttribute('key', key);
+          vLine.style.left = new String(x) + "px";
+          grid.appendChild(vLine);
+        const hLine = document.createElement('div');
+          hLine.classList.add('crosshairs', 'stay', 'h-stay');
+          hLine.style.top = new String(y) + "px";
+          grid.appendChild(hLine);
+        const newTouchTarget = document.createElement('div');
+          newTouchTarget.classList.add('touch-target');
+          newTouchTarget.setAttribute('key', key);
+          newTouchTarget.style.left = new String(x) + "px";
+          newTouchTarget.style.top = new String(y) + "px";
+          newTouchTarget.setAttribute('click', 'handleTouchTarget');
+          grid.appendChild(newTouchTarget);
+        keeps.push(key);
+        console.log("New Crosshairs Created. Key:"+key, keeps, removes);
+      }
+
+      function handleTouchTarget(e) {
+        console.log(`handleTouchTarget(${e.target.key});`);
+        const key = e.target.key;
+        const elements = document.querySelectorAll(`key="${key}"`);
+        elements.forEach(el=>{el.style.display = 'none'});
+        keeps = keeps.filter(i=>!i.includes(key));
+        removes.push(key);
+        while (keeps.length > xHairHistoryLimit) {
+          document.removeElement(document.querySelectorAll(`key=${removes[0]}`));
+          removes.slice(1);
+        }
+      }
+
+      function xHairFollowMode(e) {
+        console.log(`xHairFollowMode(${e.target.id});`);
+        // Toggle crosshairs
+        if (vertical.style.display === 'block') {
+          crosshairs.forEach(el=>el.style.display = 'none');
+        } else {
+          crosshairs.forEach(el=>el.style.display = 'block');
+        }
+      }
 
      console.log("END SCRIPT");
     </script>
