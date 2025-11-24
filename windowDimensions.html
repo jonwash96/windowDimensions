@@ -1,0 +1,202 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Window Dimensions</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'unsafe-inline' 'self'">
+    <style>
+      body {
+        width:100vw;
+        height:100vh;
+        overflow:none;
+        margin:auto;
+        scrollbar-width:none;
+        background-color:white;
+      }
+      #grid {
+        position:fixed;
+        width:100vw;
+        height:100vh;
+        top:0;left:0;
+        overflow:none;
+        z-index:1;
+      }
+      #box {
+        margin:auto;
+        transform: translateY(50vh);
+        transform-origin: 50% 50%;
+        background-color: #111;
+        color:white;
+        padding: 1em;
+        border-radius: 6px;
+        font-family: monospace;
+        position:relative;
+        width:max-content;
+        z-index:10;
+      }
+      input[type="number"] {
+        min-width: 3em;
+        border:none;
+        padding:0;
+        margin:0 4pt;
+        border-radius:6px;
+        background-color:transparent;
+        color:white;
+        font-size:1em;
+      }
+      input[type="number"]:focus {
+        border-bottom: #ddac00;
+        font-family: monospace;
+
+    }
+
+      .crosshairs {
+        position:absolute;
+        display:none;
+        z-index:0;
+        --ch-border-style: 1px solid cyan;
+      }
+      #vertical {border-left:var(--ch-border-style);height:100vh;width:0;}
+      #horizontal {border-top:var(--ch-border-style);width:100vw;height:0;}
+
+      .line {
+        position:absolute;
+        z-index:-1;
+        --l-border-style:1px dotted grey;
+      }
+      .vert {border-left:var(--l-border-style);height:100vh;width:0;}
+      .horiz {border-top:var(--l-border-style);width:100vw;height:0;}
+
+      @media (prefers-color-scheme: dark) {
+        body {background-color:#222;}
+        #box {background-color:#444;}
+        .line{--l-border-style:1px dotted #444;}
+        .line:hover{border-color:grey;}
+      }
+    </style>
+  </head>
+  <body>
+    <div id="vertical" class="crosshairs"></div>
+    <div id="horizontal" class="crosshairs"></div>
+    <div id="box">
+      Window: <span id="window"></span><br>
+      Mouse: <span id="mouse"></span><br>
+      <input id="grid-toggle" type="checkbox" onclick="toggleGrid()"></input>
+      <label>Grid Spacing:</label><input id="grid-spacing" type="number" min="10" max ="8000" steps="10" list="spacing-presets"></input>px
+        <datalist id="spacing-presets">
+          <option value="10"></option>
+          <option value="20"></option>
+          <option value="30"></option>
+          <option value="40"></option>
+          <option value="50"></option>
+          <option value="60"></option>
+          <option value="70"></option>
+          <option value="80"></option>
+          <option value="90"></option>
+          <option value="100"></option>
+        </datalist>
+      </form>
+    </div>
+    <div id="grid"></div>
+
+    <script type="text/javascript">
+      console.log("BEGIN SCRIPT");
+      const body = document.querySelector('body');
+      const grid = document.getElementById('grid');
+      const box = document.getElementById('box');
+      const vertical = document.getElementById('vertical');
+      const horizontal = document.getElementById('horizontal');
+      const win =  document.getElementById('window');
+      const mouse =  document.getElementById('mouse');
+      const gridToggle =  document.getElementById('grid-toggle');
+      const gridSpacingVal =  document.getElementById('grid-spacing');
+      const crosshairs = [vertical, horizontal];
+      let dimensions = [window.innerWidth, window.innerHeight];
+      let x,y;
+
+      // CONFIG
+      let enableGrid = true;
+      let gridSpacing = 10;
+
+      function setContent() {
+       win.textContent = `[ ${window.innerWidth}px x ${window.innerHeight}px ]`;
+       mouse.textContent = `(${x} x ${y})`;
+       gridToggle.checked = enableGrid;
+       if (!gridSpacingVal.hasFocus) gridSpacingVal.value = gridSpacing;
+      }; setContent();
+
+      function toggleGrid() {
+        enableGrid = !enableGrid;
+        let opt = enableGrid ?  'block' : 'none';
+        document.querySelectorAll('.line').forEach(el=>el.style.display = opt);
+        setContent();
+      };
+
+    gridSpacingVal.addEventListener('change', (e) => {
+      gridSpacing = e.target.value;
+      drawGrid();
+    });
+    gridSpacingVal.addEventListener('keypress', (e)=>{
+      if (e.key === 'Enter') {
+        e.target.blur();
+        drawGrid();
+      }
+    });
+    // function gsvHasFocus(e) {console.log("gsvHasFocus", e)};
+    gridSpacingVal.addEventListener('focus', (e)=>{gridSpacingVal['hasFocus'] = true});
+    gridSpacingVal.addEventListener('blur', (e)=>{gridSpacingVal['hasFocus'] = false});
+
+     document.addEventListener('mousemove', (e) => {
+       // Track Mouse position
+       x = e.clientX;
+       y = e.clientY;
+       vertical.style.left = e.clientX+"px";
+       horizontal.style.top = e.clientY+"px";
+       setContent();
+     });
+     grid.addEventListener('click', (e) => {
+       // Toggle crosshairs
+       if (vertical.style.display === 'block') {
+         crosshairs.forEach(el=>el.style.display = 'none');
+       } else {
+         crosshairs.forEach(el=>el.style.display = 'block');
+       }
+     });
+
+     function drawGrid(deltas) {
+       const width = window.innerWidth;
+       const height = window.innerHeight;
+       let IX = 0, IY = 0;
+       if (deltas) {IX = Math.min(dimensions[0]/gridSpacing); IY = Math.min(dimensions[1]/gridSpacing)}
+       else {grid.innerHTML = '';}
+       for (let i=IX; i<Math.min(width/gridSpacing); i++) {
+         const vLine = document.createElement('div');
+           vLine.classList.add('line', 'vert');
+           vLine.style.left = i*gridSpacing+"px";
+           grid.append(vLine);
+       };
+       for (let i=IY; i<Math.min(height/gridSpacing); i++) {
+         const hLine = document.createElement('div');
+           hLine.classList.add('line', 'horiz');
+           hLine.style.top = i*gridSpacing+"px";
+           grid.append(hLine);
+       }
+     dimensions = [width,height];
+    };
+
+     if (enableGrid) {
+       drawGrid();
+       window.addEventListener('resize', (e) => {
+         if (window.innerWidth > dimensions[0]+gridSpacing ||
+             window.innerHeight > dimensions[1]+gridSpacing) {
+           const deltas = [window.innerWidth - dimensions[0], window.innerHeight - dimensions[1]]
+           drawGrid(deltas);
+         }
+       });
+     }
+
+     console.log("END SCRIPT");
+    </script>
+  </body>
+</html>
