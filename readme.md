@@ -1,5 +1,5 @@
 # Window Dimensions Tool
-A simple tool that simply displays the current viewport dimensions with a resizable pixel grid and pointer position crosshairs. Meant to help web devs & designers get a visual for the scale of pixel dimensions on their screens.
+A simple tool that displays the current viewport dimensions with a resizable pixel grid and pointer position crosshairs. Meant to help web devs & designers get a visual for the scale of pixel dimensions on their screens.
 
 ***
 
